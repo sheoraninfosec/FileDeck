@@ -50,7 +50,7 @@ function asBytes(string \$ini_v): int {
 function rmrf(string \$dir): void {
     if (is_dir(\$dir)) {
         foreach (array_diff(scandir(\$dir), ['.', '..']) as \$file) {
-            rmrf("$dir/$file");
+            rmrf("$dir/\$file");
         }
         rmdir(\$dir);
     } elseif (file_exists(\$dir)) {
@@ -63,7 +63,7 @@ function is_recursively_deleteable(string \$d): bool {
     while (\$dir = array_pop(\$stack)) {
         if (!is_readable(\$dir) || !is_writable(\$dir)) return false;
         foreach (array_diff(scandir(\$dir), ['.', '..']) as \$file) {
-            \$path = "$dir/$file";
+            \$path = "$dir/\$file";
             if (is_dir(\$path)) \$stack[] = \$path;
         }
     }
@@ -147,5 +147,107 @@ switch (\$_REQUEST['do'] ?? null) {
         break;
 
     default:
-        err(400, "Invalid request");
+        break;
 }
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FileDeck</title>
+  <style>
+    body { font-family: sans-serif; background: #0e0e0e; color: #ddd; padding: 2em; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 0.5em; border-bottom: 1px solid #333; }
+    th { background: #1a1a1a; cursor: pointer; }
+    tr:hover { background: #222; }
+    a { color: #80c0ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    #upload_progress div { margin: 5px 0; }
+    .progress { height: 10px; background: #2d8dd6; margin-top: 4px; }
+  </style>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+</head>
+<body>
+  <h1>📁 FileDeck</h1>
+  <div>
+    <form id="mkdir">
+      <input type="text" name="name" placeholder="New folder name" required>
+      <button type="submit">Create Folder</button>
+    </form>
+    <input type="file" id="upload" multiple>
+  </div>
+  <div id="upload_progress"></div>
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Size</th><th>Modified</th><th>Actions</th></tr>
+    </thead>
+    <tbody id="file_list"></tbody>
+  </table>
+<script>
+const XSRF = (document.cookie.match('(^|; )_sfm_xsrf=([^;]*)')||[])[2];
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  let i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + ['B','KB','MB','GB','TB'][i];
+}
+function formatDate(ts) {
+  return new Date(ts * 1000).toLocaleString();
+}
+function listFiles() {
+  $.get('?do=list', res => {
+    if (!res.success) return;
+    $('#file_list').empty();
+    res.results.forEach(file => {
+      let link = file.is_dir ? `<a href="#" onclick="window.location='?file=${file.path}'">${file.name}</a>` : file.name;
+      let size = file.is_dir ? '--' : formatSize(file.size);
+      let actions = '';
+      if (!file.is_dir) actions += `<a href="?do=download&file=${encodeURIComponent(file.path)}">Download</a> `;
+      if (file.is_deleteable) actions += `<a href="#" onclick="deleteFile('${file.path}')">Delete</a>`;
+      $('#file_list').append(`<tr><td>${link}</td><td>${size}</td><td>${formatDate(file.mtime)}</td><td>${actions}</td></tr>`);
+    });
+  });
+}
+function deleteFile(path) {
+  $.post('', {do:'delete', xsrf:XSRF, file:path}, () => listFiles());
+}
+$('#mkdir').submit(function(e) {
+  e.preventDefault();
+  $.post('', {do:'mkdir', xsrf:XSRF, file:'.', name: this.name.value}, () => {
+    this.reset();
+    listFiles();
+  });
+});
+$('#upload').on('change', function() {
+  [...this.files].forEach(file => {
+    let row = $(`<div>${file.name}<div class="progress"></div></div>`);
+    $('#upload_progress').append(row);
+    let fd = new FormData();
+    fd.append('file_data', file);
+    fd.append('xsrf', XSRF);
+    fd.append('do', 'upload');
+    $.ajax({
+      url: '?',
+      type: 'POST',
+      data: fd,
+      processData: false,
+      contentType: false,
+      xhr: function() {
+        let xhr = $.ajaxSettings.xhr();
+        xhr.upload.onprogress = e => {
+          if (e.lengthComputable) row.find('.progress').css('width', (e.loaded / e.total * 100) + '%');
+        };
+        return xhr;
+      },
+      success: () => {
+        row.delay(500).fadeOut();
+        listFiles();
+      }
+    });
+  });
+});
+$(listFiles);
+</script>
+</body>
+</html>
