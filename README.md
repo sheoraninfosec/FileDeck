@@ -3,7 +3,7 @@
 **A modern, single-file PHP file manager**  
 Minimalistic. Secure. Dark themed. Fully self-contained.
 
-![Screenshot](dashboard.png)
+![Screenshot](newdashboard.png)
 
 ---
 
