@@ -12,19 +12,18 @@ error_reporting(E_ALL);
 ini_set('display_errors', '1');
 
 // Optional basic password protection
-/*
-$PASSWORD_HASH = password_hash('sfm', PASSWORD_DEFAULT);
+$LOGIN_ENABLED = true;
+$PASSWORD_HASH = password_hash('filedeck2025', PASSWORD_DEFAULT);
 session_start();
-if (!isset($_SESSION['_sfm_allowed']) || !$_SESSION['_sfm_allowed']) {
+if ($LOGIN_ENABLED && (!isset($_SESSION['_sfm_allowed']) || !$_SESSION['_sfm_allowed'])) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['p']) && password_verify($_POST['p'], $PASSWORD_HASH)) {
         $_SESSION['_sfm_allowed'] = true;
         header('Location: ?');
         exit;
     }
-    echo '<html><body><form action=? method=post>PASSWORD:<input type=password name=p /></form></body></html>';
+    echo '<!DOCTYPE html><html><head><title>Login - FileDeck</title><style>body{font-family:sans-serif;text-align:center;padding:4em;background:#0f0f0f;color:#eee;}input{padding:.5em;margin:.5em;background:#222;border:1px solid #444;color:#eee;}button{padding:.5em 1em;background:#444;border:none;color:#fff;cursor:pointer;}form{display:inline-block;}</style></head><body><h2>🔒 FileDeck Login</h2><form method="post"><input type="password" name="p" placeholder="Enter password"/><br><button type="submit">Login</button></form></body></html>';
     exit;
 }
-*/
 
 // Set locale
 setlocale(LC_ALL, 'en_US.UTF-8');
@@ -51,7 +50,7 @@ function asBytes(string \$ini_v): int {
 function rmrf(string \$dir): void {
     if (is_dir(\$dir)) {
         foreach (array_diff(scandir(\$dir), ['.', '..']) as \$file) {
-            rmrf("\$dir/\$file");
+            rmrf("$dir/$file");
         }
         rmdir(\$dir);
     } elseif (file_exists(\$dir)) {
@@ -64,7 +63,7 @@ function is_recursively_deleteable(string \$d): bool {
     while (\$dir = array_pop(\$stack)) {
         if (!is_readable(\$dir) || !is_writable(\$dir)) return false;
         foreach (array_diff(scandir(\$dir), ['.', '..']) as \$file) {
-            \$path = "\$dir/\$file";
+            \$path = "$dir/$file";
             if (is_dir(\$path)) \$stack[] = \$path;
         }
     }
