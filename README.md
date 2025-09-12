@@ -43,4 +43,4 @@ To enable login:
 ```php
 $LOGIN_ENABLED = true;
 $PASSWORD_HASH = password_hash('your-password', PASSWORD_DEFAULT);
-
+```
